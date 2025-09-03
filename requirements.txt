@@ -1,5 +1,7 @@
-streamlit
-web3
-pandas
-plotly
-streamlit_lottie
+streamlit==1.26.0
+web3==6.0.0
+pandas==2.1.1
+plotly==5.18.0
+streamlit-lottie==0.2.3
+streamlit-javascript==0.1.2
+requests==2.31.0
