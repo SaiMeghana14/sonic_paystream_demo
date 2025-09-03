@@ -29,7 +29,7 @@ w3 = Web3(Web3.HTTPProvider(RPC_URL))
 with open("sonic_contract.json") as f:
     contract_abi = json.load(f)
 
-CONTRACT_ADDRESS = "0xYourDeployedContractAddressHere"  # Replace with your deployed contract
+CONTRACT_ADDRESS = "0x37E71Bf924024c92421a64FdEF234fb910394c93"  # Replace with your deployed contract
 contract = w3.eth.contract(address=CONTRACT_ADDRESS, abi=contract_abi)
 
 # =======================
