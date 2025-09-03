@@ -98,9 +98,15 @@ st.markdown("Stream money in real-time 🚀 Pay per second for services, freelan
 st.sidebar.title("Wallet Connection")
 st.sidebar.markdown("Connect your MetaMask wallet to interact on-chain.")
 
-connected_wallet = st_javascript(
-    "async () => { const accounts = await ethereum.request({ method: 'eth_requestAccounts' }); return accounts[0]; }"
-)
+connected_wallet = st_javascript("""
+() => {
+    return new Promise((resolve, reject) => {
+        ethereum.request({ method: 'eth_requestAccounts' })
+        .then(accounts => resolve(accounts[0]))
+        .catch(err => reject(err));
+    });
+}
+""")
 
 if connected_wallet:
     st.sidebar.success(f"Wallet connected: {connected_wallet}")
