@@ -20,16 +20,19 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Load secrets
+SONIC_RPC = st.secrets["SONIC_RPC"]
+CONTRACT_ADDRESS = st.secrets["CONTRACT_ADDRESS"]
+PRIVATE_KEY = st.secrets.get("PRIVATE_KEY")  # optional
+
 # =======================
 # Web3 Setup (Sonic Testnet)
 # =======================
-RPC_URL = "https://rpc.sonicchain.io"
 w3 = Web3(Web3.HTTPProvider(RPC_URL))
 
 with open("sonic_contract.json") as f:
     contract_abi = json.load(f)
 
-CONTRACT_ADDRESS = "0x37E71Bf924024c92421a64FdEF234fb910394c93"  # Replace with your deployed contract
 contract = w3.eth.contract(address=CONTRACT_ADDRESS, abi=contract_abi)
 
 # =======================
