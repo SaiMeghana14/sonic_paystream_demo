@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit as st 
 from web3 import Web3
 import json
 import time
@@ -8,7 +8,9 @@ from streamlit_lottie import st_lottie
 from streamlit_javascript import st_javascript
 import requests
 
-# Dictionary to store all active streams
+# =======================
+# GLOBALS
+# =======================
 active_streams = {}  # key: stream_id, value: dict(sender, receiver, rate, deposit, start_time, running)
 
 # =======================
@@ -86,134 +88,109 @@ def coin_animation_html():
     """
 
 # =======================
-# Landing Page
-# =======================
-st_lottie(landing_lottie, height=300, key="landing")
-st.title("Sonic PayStream 💸")
-st.markdown("Stream money in real-time 🚀 Pay per second for services, freelancers, or IoT devices.")
-
-# =======================
-# MetaMask Wallet Connect
+# Wallet Connection
 # =======================
 st.sidebar.title("Wallet Connection")
 st.sidebar.markdown("Connect your MetaMask wallet to interact on-chain.")
 
-connected_wallet = st_javascript("""
-() => {
-    return new Promise((resolve, reject) => {
-        ethereum.request({ method: 'eth_requestAccounts' })
-        .then(accounts => resolve(accounts[0]))
-        .catch(err => reject(err));
-    });
-}
-""")
+try:
+    connected_wallet = st_javascript("""
+    () => {
+        return new Promise((resolve, reject) => {
+            ethereum.request({ method: 'eth_requestAccounts' })
+            .then(accounts => resolve(accounts[0]))
+            .catch(err => resolve(null));
+        });
+    }
+    """)
+except:
+    connected_wallet = None
 
 if connected_wallet:
     st.sidebar.success(f"Wallet connected: {connected_wallet}")
 else:
-    st.sidebar.warning("Please connect MetaMask.")
+    connected_wallet = st.sidebar.text_input("Manual Wallet Address (fallback):")
+    if connected_wallet:
+        st.sidebar.info(f"Using manual wallet: {connected_wallet}")
+    else:
+        st.sidebar.warning("⚠️ Please connect MetaMask or enter manually.")
 
 # =======================
-# Stream Controls
+# Main Tabs
 # =======================
-st.sidebar.subheader("Start a New Stream")
+st_lottie(landing_lottie, height=250, key="landing")
+st.title("⚡ Sonic PayStream – Real-Time Micro-Payments")
+st.markdown("🚀 Stream money in real-time. Pay per second for services, freelancers, IoT devices, or gaming.")
 
-# Generate a unique Stream ID
-stream_id = st.sidebar.number_input("Stream ID (Unique)", min_value=1, value=len(active_streams)+1, step=1)
-receiver_address = st.sidebar.text_input("Receiver Wallet")
-deposit_amount = st.sidebar.number_input("Deposit Amount (ETH)", min_value=0.001, value=0.01, step=0.001)
-rate_per_second = st.sidebar.number_input("Rate per Second (ETH)", min_value=0.000001, value=0.00001, step=0.000001)
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["💳 Start Stream", "📊 Dashboard", "📈 Analytics", "📤 Export", "🌍 Use Cases"])
 
-if st.sidebar.button("Start Stream") and connected_wallet and receiver_address:
-    # Store stream in active_streams
-    active_streams[stream_id] = {
-        "sender": connected_wallet,
-        "receiver": receiver_address,
-        "rate": rate_per_second,
-        "deposit": deposit_amount,
-        "start_time": time.time(),
-        "running": True
-    }
-    st.success(f"Stream {stream_id} started: {connected_wallet} → {receiver_address} at {rate_per_second} ETH/sec")
+# --- Tab 1: Start Stream ---
+with tab1:
+    st.subheader("Create a Payment Stream")
+    stream_id = st.number_input("Stream ID (Unique)", min_value=1, value=len(active_streams)+1, step=1)
+    receiver_address = st.text_input("Receiver Wallet")
+    deposit_amount = st.number_input("Deposit Amount (ETH)", min_value=0.001, value=0.01, step=0.001)
+    rate_per_second = st.number_input("Rate per Second (ETH)", min_value=0.000001, value=0.00001, step=0.000001)
 
-    # Loop through all active streams
-for sid, stream in active_streams.items():
-    if stream["running"]:
-        st.subheader(f"Stream ID: {sid} → {stream['sender']} → {stream['receiver']}")
-        st_lottie(stream_lottie, height=150, key=f"lottie_{sid}")
-        st.markdown(coin_animation_html(), unsafe_allow_html=True)
+    if st.button("🚀 Start Stream") and connected_wallet and receiver_address:
+        active_streams[stream_id] = {
+            "sender": connected_wallet,
+            "receiver": receiver_address,
+            "rate": rate_per_second,
+            "deposit": deposit_amount,
+            "start_time": time.time(),
+            "running": True
+        }
+        st.success(f"✅ Stream {stream_id} started: {connected_wallet} → {receiver_address} at {rate_per_second} ETH/sec")
 
-        progress_bar = st.progress(0, key=f"progress_{sid}")
-        balance_text = st.empty()
-        df = pd.DataFrame(columns=["Time (s)", "Balance (ETH)"])
-        stop_btn = st.empty()
+# --- Tab 2: Dashboard ---
+with tab2:
+    st.subheader("Active Streams Dashboard")
+    if active_streams:
+        df = pd.DataFrame.from_dict(active_streams, orient="index")
+        st.dataframe(df, use_container_width=True)
+    else:
+        st.info("No active streams yet.")
 
-        # Inner loop for each stream
-        while stream["running"]:
+# --- Tab 3: Analytics ---
+with tab3:
+    st.subheader("Streaming Analytics")
+    if active_streams:
+        for sid, stream in active_streams.items():
             elapsed = time.time() - stream["start_time"]
             total_received = elapsed * stream["rate"]
-            balance_text.text(f"Receiver Balance: {total_received:.6f} ETH")
-            progress_bar.progress(min(int((total_received/stream["deposit"])*100), 100))
-
-            df = pd.concat([df, pd.DataFrame([[elapsed, total_received]], columns=["Time (s)", "Balance (ETH)"])], ignore_index=True)
-            fig = px.line(df, x="Time (s)", y="Balance (ETH)", title=f"Streaming Balance Over Time (ID {sid})", template="plotly_dark")
+            remaining = stream["deposit"] - total_received
+            chart_df = pd.DataFrame({
+                "Time (s)": [elapsed],
+                "Withdrawn (ETH)": [total_received],
+                "Remaining (ETH)": [remaining]
+            })
+            fig = px.bar(chart_df, x=["Withdrawn (ETH)", "Remaining (ETH)"], y=[elapsed], orientation="h", title=f"Stream {sid} Balance")
             st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("No streams to analyze.")
 
-            # Cancel button per stream
-            if stop_btn.button(f"Cancel Stream {sid}"):
-                stream["running"] = False
-                st.warning(f"Stream {sid} cancelled ⏹️")
-                break
+# --- Tab 4: Export ---
+with tab4:
+    st.subheader("Export Stream Data")
+    if active_streams:
+        df = pd.DataFrame.from_dict(active_streams, orient="index")
+        st.download_button("📥 Download CSV", df.to_csv(index=False), "streams.csv", "text/csv")
+    else:
+        st.warning("No data available to export.")
 
-            if total_received >= stream["deposit"]:
-                stream["running"] = False
-                st.success(f"Stream {sid} completed! 🎉")
-                st_lottie(success_lottie, height=150, key=f"success_{sid}")
-
-            time.sleep(1)
-
-    # Coin animation
-    st.markdown(coin_animation_html(), unsafe_allow_html=True)
-
-    start_time = time.time()
-    progress_bar = st.progress(0)
-    balance_text = st.empty()
-    df = pd.DataFrame(columns=["Time (s)", "Balance (ETH)"])
-    running = True
-    stop_stream_btn = st.empty()
-
-      
-# =======================
-# Withdraw Funds/Stop Stream On-chain
-# =======================
-st.sidebar.subheader("Withdraw Funds / Stop Stream")
-stream_id_action = st.sidebar.number_input("Stream ID", min_value=1, step=1)
-
-if st.sidebar.button("Withdraw Stream"):
-    try:
-        tx = contract.functions.withdraw(int(stream_id_action)).buildTransaction({
-            "from": connected_wallet,
-            "gas": 200000
-        })
-        st.success(f"Withdrawn from Stream ID: {stream_id_action} 🚀")
-    except Exception as e:
-        st.error(f"Error: {e}")
-
-if st.sidebar.button("Stop Stream On-chain"):
-    try:
-        tx = contract.functions.stopStream(int(stream_id_action)).buildTransaction({
-            "from": connected_wallet,
-            "gas": 200000
-        })
-        st.success(f"Stream ID {stream_id_action} stopped ⏹️")
-        # Also stop local dashboard
-        if stream_id_action in active_streams:
-            active_streams[stream_id_action]["running"] = False
-    except Exception as e:
-        st.error(f"Error: {e}")
+# --- Tab 5: Use Cases ---
+with tab5:
+    st.subheader("🌍 Real-World Applications of Sonic PayStream")
+    st.markdown("""
+    - 🎬 **Content Platforms** → Pay per minute for video/music instead of subscriptions.  
+    - 👨‍💻 **Freelancers** → Get paid per second of work instantly.  
+    - 🔌 **IoT Devices** → EV charging, cloud compute, smart meters billed per second.  
+    - 🎮 **Gaming/Metaverse** → Pay as you play, per level or hour.  
+    """)
 
 # =======================
 # Footer
 # =======================
 st.markdown("---")
-st.markdown("Made with ❤️ for Sonic S Tier Hackathon")
+st.markdown("Made with ❤️ for **Sonic S Tier Hackathon** ⚡")
