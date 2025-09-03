@@ -20,10 +20,12 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Load secrets
-SONIC_RPC = st.secrets["SONIC_RPC"]
-CONTRACT_ADDRESS = st.secrets["CONTRACT_ADDRESS"]
-PRIVATE_KEY = st.secrets.get("PRIVATE_KEY")  # optional
+# =======================
+# Load secrets safely
+# =======================
+RPC_URL = st.secrets.get("SONIC_RPC", "https://rpc.sonicchain.io")
+CONTRACT_ADDRESS = st.secrets.get("CONTRACT_ADDRESS", "0x0000000000000000000000000000000000000000")
+PRIVATE_KEY = st.secrets.get("PRIVATE_KEY", None)  # optional
 
 # =======================
 # Web3 Setup (Sonic Testnet)
